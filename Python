@@ -1,0 +1,269 @@
+# ============================================
+# Python Student Information Management System
+# Author: Lander Fernando
+# Description: Manages and organizes student
+#   data using data structures & algorithms.
+# ============================================
+
+import os
+import re
+
+# ---- ANSI Colors ----
+RESET  = "\033[0m"
+BOLD   = "\033[1m"
+CYAN   = "\033[36m"
+YELLOW = "\033[33m"
+GREEN  = "\033[32m"
+RED    = "\033[31m"
+WHITE  = "\033[97m"
+
+# ---- Data Structure: List of dicts (simulating a linked list order) ----
+students = []
+next_id = 1
+
+
+def clear():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+
+def header():
+    print(CYAN + BOLD)
+    print("╔══════════════════════════════════════════╗")
+    print("║   STUDENT INFORMATION MANAGEMENT SYSTEM  ║")
+    print("║          by Lander Fernando              ║")
+    print("╚══════════════════════════════════════════╝")
+    print(RESET)
+
+
+def press_enter():
+    input(YELLOW + "\nPress ENTER to continue..." + RESET)
+
+
+def validate_name(name: str) -> bool:
+    return bool(re.match(r"^[A-Za-z ,.'-]{2,60}$", name.strip()))
+
+
+def validate_id(student_id: str) -> bool:
+    return bool(re.match(r"^\d{4}-\d{4}$", student_id.strip()))
+
+
+def validate_grade(grade: str) -> bool:
+    try:
+        g = float(grade)
+        return 0.0 <= g <= 100.0
+    except ValueError:
+        return False
+
+
+# ---- CRUD Operations ----
+
+def add_student():
+    clear(); header()
+    print(BOLD + CYAN + "=== ADD STUDENT ===" + RESET + "\n")
+
+    name = input(WHITE + "Full Name       : " + RESET).strip()
+    if not validate_name(name):
+        print(RED + "Invalid name. Use letters only, 2–60 characters." + RESET)
+        press_enter(); return
+
+    student_id = input(WHITE + "Student ID      : " + RESET).strip()
+    if not validate_id(student_id):
+        print(RED + "Invalid ID. Format must be XXXX-XXXX (e.g. 2024-0001)." + RESET)
+        press_enter(); return
+
+    # Check for duplicate ID (linear search)
+    if any(s['id'] == student_id for s in students):
+        print(RED + f"Student ID '{student_id}' already exists." + RESET)
+        press_enter(); return
+
+    course  = input(WHITE + "Course/Program  : " + RESET).strip()
+    year    = input(WHITE + "Year Level      : " + RESET).strip()
+    grade   = input(WHITE + "Grade (0–100)   : " + RESET).strip()
+    if not validate_grade(grade):
+        print(RED + "Invalid grade. Enter a number between 0 and 100." + RESET)
+        press_enter(); return
+
+    students.append({
+        "id":      student_id,
+        "name":    name,
+        "course":  course,
+        "year":    year,
+        "grade":   float(grade),
+    })
+
+    # Keep list sorted by ID (insertion sort logic after append)
+    students.sort(key=lambda s: s['id'])
+
+    print(GREEN + f"\nStudent '{name}' added successfully!" + RESET)
+    press_enter()
+
+
+def search_student():
+    clear(); header()
+    print(BOLD + CYAN + "=== SEARCH STUDENT ===" + RESET + "\n")
+
+    print("[1] Search by Student ID")
+    print("[2] Search by Name\n")
+    choice = input(CYAN + "Choose: " + RESET).strip()
+
+    results = []
+    if choice == '1':
+        sid = input(WHITE + "Enter Student ID: " + RESET).strip()
+        results = [s for s in students if s['id'] == sid]
+    elif choice == '2':
+        name_query = input(WHITE + "Enter Name: " + RESET).strip().lower()
+        results = [s for s in students if name_query in s['name'].lower()]
+    else:
+        print(RED + "Invalid choice." + RESET)
+        press_enter(); return
+
+    if not results:
+        print(RED + "\nNo student found." + RESET)
+    else:
+        print(GREEN + f"\n{len(results)} result(s) found:\n" + RESET)
+        for s in results:
+            print_student(s)
+
+    press_enter()
+
+
+def delete_student():
+    clear(); header()
+    print(BOLD + CYAN + "=== DELETE STUDENT ===" + RESET + "\n")
+
+    sid = input(WHITE + "Enter Student ID to delete: " + RESET).strip()
+    idx = next((i for i, s in enumerate(students) if s['id'] == sid), None)
+
+    if idx is None:
+        print(RED + f"No student with ID '{sid}' found." + RESET)
+    else:
+        name = students[idx]['name']
+        confirm = input(YELLOW + f"Delete '{name}'? (y/n): " + RESET).strip().lower()
+        if confirm == 'y':
+            students.pop(idx)
+            print(GREEN + f"Student '{name}' deleted." + RESET)
+        else:
+            print(YELLOW + "Deletion cancelled." + RESET)
+
+    press_enter()
+
+
+def display_all():
+    clear(); header()
+    print(BOLD + CYAN + "=== ALL STUDENTS ===" + RESET + "\n")
+
+    if not students:
+        print(YELLOW + "No students on record." + RESET)
+        press_enter(); return
+
+    print(BOLD + f"{'ID':<14} {'Name':<30} {'Course':<20} {'Year':<8} {'Grade':>6}" + RESET)
+    print("─" * 82)
+    for s in students:
+        grade_color = GREEN if s['grade'] >= 75 else RED
+        print(f"{s['id']:<14} {s['name']:<30} {s['course']:<20} {s['year']:<8} "
+              f"{grade_color}{s['grade']:>6.1f}{RESET}")
+
+    print("\n" + BOLD + f"Total students: {len(students)}" + RESET)
+
+    # Stats
+    if students:
+        grades = [s['grade'] for s in students]
+        avg = sum(grades) / len(grades)
+        top = max(students, key=lambda s: s['grade'])
+        low = min(students, key=lambda s: s['grade'])
+        print(f"Average Grade : {avg:.2f}")
+        print(f"Highest Grade : {top['name']} — {top['grade']:.1f}")
+        print(f"Lowest  Grade : {low['name']} — {low['grade']:.1f}")
+
+    press_enter()
+
+
+def edit_student():
+    clear(); header()
+    print(BOLD + CYAN + "=== EDIT STUDENT ===" + RESET + "\n")
+
+    sid = input(WHITE + "Enter Student ID to edit: " + RESET).strip()
+    idx = next((i for i, s in enumerate(students) if s['id'] == sid), None)
+
+    if idx is None:
+        print(RED + f"No student with ID '{sid}' found." + RESET)
+        press_enter(); return
+
+    s = students[idx]
+    print(GREEN + f"\nEditing: {s['name']}" + RESET)
+    print("(Press ENTER to keep current value)\n")
+
+    new_name = input(f"Name [{s['name']}]: ").strip()
+    if new_name and validate_name(new_name):
+        s['name'] = new_name
+
+    new_course = input(f"Course [{s['course']}]: ").strip()
+    if new_course:
+        s['course'] = new_course
+
+    new_year = input(f"Year Level [{s['year']}]: ").strip()
+    if new_year:
+        s['year'] = new_year
+
+    new_grade = input(f"Grade [{s['grade']}]: ").strip()
+    if new_grade and validate_grade(new_grade):
+        s['grade'] = float(new_grade)
+
+    print(GREEN + "\nStudent record updated." + RESET)
+    press_enter()
+
+
+def print_student(s: dict):
+    print(BOLD + f"  ID     : " + RESET + s['id'])
+    print(BOLD + f"  Name   : " + RESET + s['name'])
+    print(BOLD + f"  Course : " + RESET + s['course'])
+    print(BOLD + f"  Year   : " + RESET + s['year'])
+    g_color = GREEN if s['grade'] >= 75 else RED
+    print(BOLD + f"  Grade  : " + g_color + str(s['grade']) + RESET)
+    print()
+
+
+def show_menu():
+    clear(); header()
+    print(BOLD + "Select an operation:\n" + RESET)
+    print(GREEN  + "  [1]" + RESET + " Add Student")
+    print(GREEN  + "  [2]" + RESET + " Search Student")
+    print(GREEN  + "  [3]" + RESET + " Delete Student")
+    print(GREEN  + "  [4]" + RESET + " Display All Students")
+    print(GREEN  + "  [5]" + RESET + " Edit Student")
+    print(RED    + "  [6]" + RESET + " Exit\n")
+    return input(CYAN + "Enter your choice: " + RESET).strip()
+
+
+def seed_demo():
+    """Pre-load some sample data."""
+    global students
+    students = [
+        {"id": "2024-0001", "name": "Lander Fernando",   "course": "BSIT", "year": "2nd Year", "grade": 90.5},
+        {"id": "2024-0002", "name": "Maria Santos",      "course": "BSCS", "year": "1st Year", "grade": 85.0},
+        {"id": "2024-0003", "name": "Juan Dela Cruz",    "course": "BSIT", "year": "3rd Year", "grade": 72.0},
+        {"id": "2024-0004", "name": "Ana Reyes",         "course": "BSBA", "year": "2nd Year", "grade": 95.5},
+    ]
+
+
+def main():
+    seed_demo()
+
+    while True:
+        choice = show_menu()
+        if   choice == '1': add_student()
+        elif choice == '2': search_student()
+        elif choice == '3': delete_student()
+        elif choice == '4': display_all()
+        elif choice == '5': edit_student()
+        elif choice == '6':
+            clear()
+            print(GREEN + BOLD + "\nThank you for using Student Info System!\n— by Lander Fernando\n" + RESET)
+            break
+        else:
+            print(RED + "Invalid choice. Try again." + RESET)
+            press_enter()
+
+
+if __name__ == "__main__":
+    main()
